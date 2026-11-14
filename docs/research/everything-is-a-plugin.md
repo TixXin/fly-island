@@ -2,6 +2,8 @@
 
 > 日期：2026-11-14。问题：用户想让浮屿的插件系统做到 DeepSeek Harness 那样「万物皆插件」：插件什么都能改。DeepSeek Harness 实际是怎么做的，浮屿能借鉴什么。范围：`deepseek-ai/deepseek-harness` 仓库的 `docs/architecture`、`cordis-primer`、`capability-seams`、`subsystems/client-modules`、`subsystems/slots`、`packages/boot/plugin-manager`、`SAFETY`、`vendor/README`（main 分支，2026-11-14 读）；`cordiverse/cordis` 仓库和 npm 包 `cordis`。方案见 [v3-everything-plugin.md](../architecture/plugins/v3-everything-plugin.md)。
 
+后续调研（2026-11-14）：[同类插件架构](plugin-architectures.md)、[同权插件的安全](plugin-security.md)、[技术可行性](plugin-host-feasibility.md)。
+
 ## 结论
 
 - **DeepSeek Harness（dsh）的「万物皆插件」是字面意思**：仓库简介就是「Everything is a Plugin」。模型适配器、工具注册表、会话日志、连 agent 循环本身都是插件；没有「需要打补丁的特权内核」，扩展的方式是把插件挂到别的插件旁边 [1]。
