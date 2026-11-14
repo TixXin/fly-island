@@ -42,6 +42,7 @@
   - [同类插件架构](../../research/plugin-architectures.md)
   - [同权插件的安全](../../research/plugin-security.md)
   - [技术可行性](../../research/plugin-host-feasibility.md)
+  - [MyGo 和 Tauri 的对比](../../research/mygo-vs-tauri.md)（结论：第 3 版继续用 Tauri）
 
 ## 名词
 
@@ -140,7 +141,7 @@ flowchart LR
 |---|---|
 | macOS 上隐藏的页面默认几分钟后被整页挂起 | 宿主窗口设 `backgroundThrottling: "disabled"`（macOS 14 起有效，浮屿最低支持 15） |
 | 即使不挂起，定时器也可能被压到每秒 1 次；`requestAnimationFrame` 不触发 | **准点的事放 Rust**：`ctx.timer` 由 Rust 计时，到点用 `invoke` 的回应唤醒宿主；宿主里不做动画 |
-| Windows 上 Tauri 没有对应开关，隐藏窗口的实际降速没人测过 | 第 0 阶段实测；不行就给 WebView2 加启动参数 |
+| Windows 上 Tauri 没有对应开关，隐藏窗口的实际降速没人测过 | 第 0 阶段实测；不行就用窗口配置的 `additionalBrowserArgs` 给 WebView2 加 `--disable-background-timer-throttling --disable-renderer-backgrounding --disable-backgrounding-occluded-windows`（MyGo 的做法，见 [mygo-vs-tauri.md](../../research/mygo-vs-tauri.md)）。这些参数属于整个 WebView2 环境，所有窗口必须一致 |
 | 宿主卡死、崩溃或被系统杀掉 | Rust 定时给宿主发心跳；连续没回应就重建宿主窗口，插件从保存的状态恢复。所以**插件的状态不能只放在内存里** |
 | 所有窗口都不可见时（岛屿收起、睡眠唤醒后）应用可能进入省电状态 | 第 0 阶段实测 |
 
