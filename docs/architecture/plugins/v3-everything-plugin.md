@@ -43,6 +43,7 @@
   - [同权插件的安全](../../research/plugin-security.md)
   - [技术可行性](../../research/plugin-host-feasibility.md)
   - [MyGo 和 Tauri 的对比](../../research/mygo-vs-tauri.md)（结论：第 3 版继续用 Tauri）
+  - [哪些桌面框架能做「万物皆插件」](../../research/desktop-frameworks.md)（结论：不换框架；建议第 0 阶段对照一下「宿主放独立的 Node / Bun 进程」）
 
 ## 名词
 
