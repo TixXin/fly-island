@@ -125,24 +125,91 @@ Tauri 的 `emit` 把负载拼进一段脚本交给 WebView 执行，每个内容
 
 ## 插件包
 
-全新格式，不认第 2 版的 `fuyu-plugin.json`：
+全新格式，不认第 2 版的 `fuyu-plugin.json`。清单就是 `package.json`，浮屿的字段放在 `fuyu` 下：
 
 ```json
 {
   "name": "@someone/fuyu-weather",
-  "version": "1.0.0",
+  "version": "1.2.0",
+  "description": "Weather on the island",
+  "author": "someone",
+  "license": "MIT",
+  "homepage": "https://example.com/weather",
+  "repository": "github:someone/fuyu-weather",
+  "keywords": ["weather", "forecast"],
   "fuyu": {
+    "displayName": { "zh-CN": "天气", "en": "Weather" },
+    "description": { "zh-CN": "岛上看天气和降雨提醒", "en": "Weather and rain alerts on the island" },
+    "icon": "assets/icon.png",
+    "categories": ["information"],
+    "screenshots": [
+      { "path": "assets/forecast.png", "caption": { "zh-CN": "预报页", "en": "Forecast page" } }
+    ],
     "minAppVersion": "0.4.0",
     "platforms": ["windows", "macos"],
     "host": "dist/host.js",
-    "client": { "island": "dist/island.js", "settings": "dist/settings.js" }
+    "client": { "island": "dist/island.js", "settings": "dist/settings.js" },
+    "inject": ["notify", "http"],
+    "provides": ["weather"],
+    "replaces": [],
+    "slots": ["island.page", "island.bar", "settings.section"],
+    "config": "dist/config.schema.json"
   }
 }
 ```
 
-- 宿主部分和各窗口的客户端部分分开打包，窗口只加载自己用得到的代码。
-- 插件文件经自定义协议从 `~/.fuyu/plugins/<名字>/` 提供，不放进 Tauri 的前端资源里。
-- 用 TypeScript 写，类型声明随 npm 包 `fuyu-plugin` 2.0 发布（和 1.x 不兼容）。
+| 字段 | 用途 |
+|---|---|
+| `name`、`version`、`author`、`license`、`homepage`、`repository`、`keywords` | npm 的标准字段，市场直接显示和搜索 |
+| `displayName`、`description` | 中英文的名字和一句话介绍 |
+| `icon`、`screenshots` | 市场卡片的图标、详情页的截图（带中英文说明） |
+| `categories` | 市场分类 |
+| `minAppVersion`、`platforms` | 兼容性：不满足的在市场里标出、不能安装 |
+| `host`、`client` | 宿主部分和各窗口的界面部分，分开打包，窗口只加载自己用得到的 |
+| `inject` | 依赖哪些服务；缺了就不启动，市场提示「需要先装某某插件」 |
+| `provides`、`replaces` | 提供哪些服务、替换哪些内置服务。**市场和安装确认会写明「这个插件会替换内置的翻译」**，审核时也对照代码核实 |
+| `slots` | 往哪些插槽放界面，市场显示成「加一个岛上页面」「加一个设置分节」 |
+| `config` | 设置项的 schema：设置窗口自动生成表单，市场详情列出有哪些可调项 |
+
+`provides`、`replaces`、`slots` 是声明，内核不靠它们限制插件（完整插件本来什么都能做），但加载时会核对：实际注册了没声明的服务或插槽，就在插件页标「和声明不符」，市场审核不通过。
+
+### Release 是什么文件
+
+**一个 zip：`<名字>-<版本>.zip`**，另加一个作者签名文件 `<名字>-<版本>.zip.sig`（和第 2 版一样的两个附件）。zip 由 `npx fuyu-plugin pack` 生成，同样的输入每次得到同样的字节。里面是：
+
+```text
+package.json          清单
+dist/host.js          宿主部分（已打包成单个文件，依赖都打进去）
+dist/island.js        各窗口的界面部分（React 等由浮屿提供，不打进去）
+dist/settings.js
+dist/config.schema.json
+assets/               图标、截图、插件自己的图片和音效
+README.md             市场详情页的说明（可以有 README.zh-CN.md）
+CHANGELOG.md          市场详情页的版本历史
+LICENSE
+```
+
+- 不是单个 `.js`：宿主和各窗口要分开加载，还要带图标、截图和文档。对用户来说仍然是「一个文件」，市场下载、核对哈希和签名、解压到 `~/.fuyu/plugins/<名字>/`。
+- 不带 `node_modules`：依赖在打包时打进 `dist/`，浮屿里没有 Node，也不在用户电脑上跑 `npm install`。
+- 上限沿用 20 MB。
+
+### 构建产物和「与源码一致」
+
+第 3 版的插件都要构建（TypeScript 加打包），第 2 版「有构建步骤的跳过核对」那条不能再用，否则所有插件都跳过了。做法：
+
+- 构建只用 `fuyu-plugin build`：固定版本的打包器、固定的配置，不跑作者自己的构建脚本；依赖按锁文件安装，并且不运行依赖的安装脚本。
+- 市场 CI 在**没有密钥的 job** 里（E26 已经把构建和签名分开）取标签处的源码，按同样的方式构建、打包，和 Release 的 zip 逐个文件比较。一致才上架。
+- 这要求构建可重现。第 5 阶段先验证：同一份源码和锁文件在作者电脑（Windows、Mac）和 CI（Linux）上打出的文件是否逐字节相同；做不到的话，退一步改成「市场自己构建、发布市场构建的包」，作者签的是源码的标签。
+
+### 市场里显示什么
+
+| 来源 | 信息 |
+|---|---|
+| 清单 | 名字、介绍、图标、截图、分类、关键词、作者、许可证、主页、仓库、兼容的版本和系统、依赖、提供和替换的服务、用到的插槽、设置项 |
+| 包里的文件 | README、CHANGELOG（各 16 KB 以内，和第 2 版一样随索引带上） |
+| 市场加上的 | 发布者和是否已验证、是否作者签名、是否与源码一致、包大小、发布时间、历史版本、点赞数、是否被撤销 |
+
+图标和截图不进索引（索引要签名、要小），由市场 CI 从包里取出，放在 `fuyu-plugins` 仓库的固定地址，索引里只记地址和哈希。
 
 ## 安装、市场和信任
 
@@ -152,7 +219,7 @@ Tauri 的 `emit` 把负载拼进一段脚本交给 WebView 执行，每个内容
 |---|---|
 | **安装前说清楚** | 安装确认写明「这个插件拥有和浮屿一样的权限」，列出作者、发布者、是否作者签名、是否与源码一致 |
 | **作者签名** | 沿用 [author-signing.md](author-signing.md)：首次信任后固定密钥，换了密钥的更新要用户确认 |
-| **与源码一致** | 沿用 E25：市场只收 Release 附件和标签处源码一致的版本 |
+| **与源码一致** | 市场在没有密钥的 job 里从标签处的源码构建，和 Release 附件一致才上架（见「构建产物和『与源码一致』」） |
 | **撤销名单** | 沿用：恶意插件被撤销后，已装的自动停用或卸载 |
 | **市场审核** | 第一次上架由维护者读源码 |
 | **出错隔离** | 一个插件的 `apply` 或事件处理抛错，只停用这个插件，记日志、在插件页标出来；反复出错就自动关掉 |
@@ -203,7 +270,7 @@ Tauri 的 `emit` 把负载拼进一段脚本交给 WebView 执行，每个内容
 | **2. 插槽化** | 岛屿（收起条、展开页、页头、通知）、设置窗口（分类、分节）、菜单改成插槽，去掉写死的列表。先搬迁、零行为变化，一块界面一个提交 | 现有功能照常，但都经插槽注册 | 2 周 |
 | **3. 内置功能插件化** | Rust 能力的提供者插件；`features/` 每个领域变成插件；设置的插件页列出全部内置插件，能单独关掉。先拿计时器、翻译打样，再逐个迁 | 每个内置功能都能关掉，关掉后不留界面、不跑后台 | 4–6 周 |
 | **4. 接缝** | 翻译引擎、歌词来源、日历来源、AI 代理接入、剪贴板动作、截图后动作、消息来源做成接缝 | 写一个插件就能换掉其中任何一个内置实现 | 2–3 周 |
-| **5. 第三方插件** | 插件包格式、从 `~/.fuyu/plugins` 加载、开发模式（含堆快照）、`fuyu-plugin` 2.0 和脚手架、新的市场索引、签名、源码核对、撤销、安装确认、文档重写；接口转正 | 外部作者从脚手架到上架走通一遍 | 3–4 周 |
+| **5. 第三方插件** | 插件包格式（先验证构建可重现）、从 `~/.fuyu/plugins` 加载、开发模式（含堆快照）、`fuyu-plugin` 2.0 和脚手架、新的市场索引、签名、源码核对、撤销、安装确认、文档重写；接口转正 | 外部作者从脚手架到上架走通一遍 | 3–4 周 |
 | **6. 下线第 2 版** | 删掉进程插件、模板、WebView2 页面；重写 7 个官方插件；通知第三方作者；升级提示 | 仓库里没有第 2 版的代码 | 2–3 周 |
 
 合计约 4–5 个月的会话工作量，每个阶段都在 Windows 和 Mac 的真岛上验收。第 1–4 阶段对用户基本没有可见变化，可以随常规版本发布；第 5、6 阶段一起作为一个大版本（例如 0.4.0）发布。D49（现有代码的 `emit` 泄漏）和这些阶段互不依赖，随时可以做。
