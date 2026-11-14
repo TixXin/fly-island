@@ -18,7 +18,7 @@ export function pushBlock(updates, env) {
   if (updates.some((update) => update.remoteRef === main)) {
     return [
       "",
-      `✋ 不能直接推送 ${INTEGRATION_BRANCH}，要开 PR：pnpm mq:land（把本地提交推到 land/ 分支、开 PR、CI 通过后自动合入）。`,
+      `✋ 不能直接推送 ${INTEGRATION_BRANCH}，要开 PR：pnpm mq:land --yes（把本地提交推到 land/ 分支、开 PR、CI 通过后自动合入）。`,
       `   紧急情况：${EMERGENCY_ENV}=1 git push …`,
       "",
     ].join("\n");

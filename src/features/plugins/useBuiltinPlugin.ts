@@ -3,6 +3,9 @@ import { listPlugins } from "./api";
 import { listenPluginViewChanged } from "../plugin-views/api";
 import { BUILTIN_PLUGIN_OFF, builtinPluginState, type BuiltinPluginState } from "./builtinPlugin";
 
+const RETRY_MS = 1000;
+const RETRY_LIMIT = 30;
+
 export function useBuiltinPlugin(id: string): BuiltinPluginState {
   const [state, setState] = useState<BuiltinPluginState>(BUILTIN_PLUGIN_OFF);
 
@@ -10,7 +13,10 @@ export function useBuiltinPlugin(id: string): BuiltinPluginState {
     let cancelled = false;
     let unlisten: (() => void) | undefined;
     let lastText = "";
+    let retries = 0;
+    let retryTimer: number | undefined;
     const refresh = () => {
+      window.clearTimeout(retryTimer);
       listPlugins()
         .then((snapshot) => {
           const next = builtinPluginState(snapshot, id);
@@ -19,7 +25,13 @@ export function useBuiltinPlugin(id: string): BuiltinPluginState {
           lastText = text;
           setState(next);
         })
-        .catch((error: unknown) => console.error(`Failed to read built-in plugin ${id}`, error));
+        .catch((error: unknown) => {
+          console.error(`Failed to read built-in plugin ${id}`, error);
+          if (!cancelled && retries < RETRY_LIMIT) {
+            retries += 1;
+            retryTimer = window.setTimeout(refresh, RETRY_MS);
+          }
+        });
     };
     refresh();
     void listenPluginViewChanged((change) => {
@@ -36,6 +48,7 @@ export function useBuiltinPlugin(id: string): BuiltinPluginState {
       .catch((error: unknown) => console.error("Failed to listen for plugin changes", error));
     return () => {
       cancelled = true;
+      window.clearTimeout(retryTimer);
       unlisten?.();
     };
   }, [id]);

@@ -1,3 +1,7 @@
+mod seed;
+
+pub(crate) use seed::before_start;
+
 const ENV: &str = "FOCUSD_DEV_LANE";
 const CENTER_ENV: &str = "FOCUSD_DEV_LANE_CENTER";
 
@@ -10,6 +14,17 @@ pub(crate) fn lane() -> Option<u32> {
 
 pub(crate) fn identifier(lane: u32) -> String {
     format!("com.tixxin.fuyu.lane-{lane}")
+}
+
+pub(crate) fn service(base: &str) -> String {
+    service_in(lane(), base)
+}
+
+fn service_in(lane: Option<u32>, base: &str) -> String {
+    match (lane, base.strip_prefix(crate::rename_migration::NEW_IDENTIFIER)) {
+        (Some(lane), Some(rest)) if rest.starts_with('.') => format!("{}{rest}", identifier(lane)),
+        _ => base.to_string(),
+    }
 }
 
 #[cfg(target_os = "macos")]
@@ -42,7 +57,18 @@ pub(crate) fn refuse_in_preview(action: &str) -> Result<(), String> {
 
 #[cfg(test)]
 mod tests {
-    use super::{identifier, left_edge, stage_x};
+    use super::{identifier, left_edge, service_in, stage_x};
+
+    #[test]
+    fn the_installed_app_keeps_its_credential_names_and_a_lane_gets_its_own() {
+        for name in ["com.tixxin.fuyu.calendar", "com.tixxin.fuyu.bark", "com.tixxin.fuyu.plan-usage", "com.tixxin.fuyu.qq-mail", "com.tixxin.fuyu.translation", "com.tixxin.fuyu.plugin.dev.focusd.tasks"] {
+            assert_eq!(service_in(None, name), name);
+        }
+        assert_eq!(service_in(Some(1), "com.tixxin.fuyu.bark"), "com.tixxin.fuyu.lane-1.bark");
+        assert_eq!(service_in(Some(12), "com.tixxin.fuyu.plugin.dev.focusd.tasks"), "com.tixxin.fuyu.lane-12.plugin.dev.focusd.tasks");
+        assert_eq!(service_in(Some(1), "Claude Code-credentials"), "Claude Code-credentials");
+        assert_eq!(service_in(Some(1), "com.tixxin.fuyuu.bark"), "com.tixxin.fuyuu.bark");
+    }
 
     #[test]
     fn the_island_is_centred_on_its_monitor_outside_a_preview() {

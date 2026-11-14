@@ -1,4 +1,5 @@
 import { useRef, useState, type ReactNode } from "react";
+import { DevWatermark } from "../../components/DevWatermark";
 import { useTranslation } from "../../i18n";
 import { isMacOS } from "../../lib/platform";
 import { entryOf, type SettingsCategory } from "./categories";
@@ -31,6 +32,7 @@ export function LayoutEditor({
   return (
     <div className="settings-layout" data-tauri-drag-region>
       {!isMacOS && <WindowControls style="windows" />}
+      <DevWatermark place="settings" />
       <div className="settings-sidebar-card" data-tauri-drag-region>
         <SettingsSidebar
           category={category}

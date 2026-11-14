@@ -12,8 +12,6 @@ pub(super) struct Session {
     pub(super) unread: Option<u32>,
     pub(super) muted: bool,
     pub(super) mentioned: bool,
-    pub(super) pinned: bool,
-    pub(super) open: bool,
 }
 
 const STATUS_LINES: [&str; 10] = [
@@ -29,7 +27,6 @@ const STATUS_LINES: [&str; 10] = [
     "@我",
 ];
 const MUTED_LINES: [&str; 3] = ["消息免打扰", "免打扰", "静音"];
-const PINNED_LINES: [&str; 2] = ["已置顶", "置顶聊天"];
 const MENTION_MARKS: [&str; 3] = ["有人@我", "@我", "@所有人"];
 const SERVICE_ACCOUNTS: &str = "服务号";
 
@@ -72,8 +69,6 @@ pub(super) fn parse(automation_id: &str, name: &str) -> Option<Session> {
         unread,
         muted: lines.iter().any(|line| MUTED_LINES.contains(line)),
         mentioned: lines[1..end].iter().any(|line| is_mention(line)),
-        pinned: lines.iter().any(|line| PINNED_LINES.contains(line)),
-        open: false,
     })
 }
 
@@ -84,50 +79,26 @@ fn is_mention(line: &str) -> bool {
     })
 }
 
-fn changed(before: &HashMap<&str, &Session>, row: &Session, open_counts: bool) -> bool {
-    match before.get(row.key.as_str()) {
-        Some(old) => {
-            row.unread.unwrap_or(0) > old.unread.unwrap_or(0)
-                || (open_counts && row.open && old.preview != row.preview)
-        }
-        None => row.unread.unwrap_or(0) > 0,
-    }
+fn changed(before: &HashMap<&str, &Session>, row: &Session) -> bool {
+    let old = before.get(row.key.as_str()).and_then(|old| old.unread);
+    row.unread.unwrap_or(0) > old.unwrap_or(0)
 }
 
 fn by_key(rows: &[Session]) -> HashMap<&str, &Session> {
     rows.iter().map(|row| (row.key.as_str(), row)).collect()
 }
 
-pub(super) fn muted_changed(before: &[Session], now: &[Session], open_counts: bool) -> bool {
+pub(super) fn muted_changed(before: &[Session], now: &[Session]) -> bool {
     let before = by_key(before);
-    now.iter().any(|row| {
-        row.muted && !row.mentioned && !row.preview.is_empty() && changed(&before, row, open_counts)
-    })
+    now.iter()
+        .any(|row| row.muted && !row.mentioned && !row.preview.is_empty() && changed(&before, row))
 }
 
-pub(super) fn new_messages<'a>(
-    before: &[Session],
-    now: &'a [Session],
-    open_counts: bool,
-) -> Vec<&'a Session> {
-    let top = |rows: &'a [Session]| {
-        rows.iter()
-            .find(|row| !row.pinned)
-            .map(|row| row.key.as_str())
-    };
-    let same_start = before.first().map(|row| &row.key) == now.first().map(|row| &row.key);
-    let old_top = before
-        .iter()
-        .find(|row| !row.pinned)
-        .map(|row| row.key.as_str());
-    let moved_up = top(now).filter(|key| same_start && old_top != Some(*key));
+pub(super) fn new_messages<'a>(before: &[Session], now: &'a [Session]) -> Vec<&'a Session> {
     let before = by_key(before);
     now.iter()
         .filter(|row| (!row.muted || row.mentioned) && !row.preview.is_empty())
-        .filter(|row| {
-            (open_counts && row.open && moved_up == Some(row.key.as_str()))
-                || changed(&before, row, open_counts)
-        })
+        .filter(|row| changed(&before, row))
         .collect()
 }
 
@@ -137,11 +108,7 @@ pub(super) fn read(window: HWND) -> Option<Vec<Session>> {
     let rows = uia_list::list_rows(window, ROW_PREFIX)?;
     let chats: Vec<Session> = rows
         .iter()
-        .filter_map(|row| {
-            let mut chat = parse(&row.id, &row.name)?;
-            chat.open = row.selected;
-            Some(chat)
-        })
+        .filter_map(|row| parse(&row.id, &row.name))
         .collect();
     (!chats.is_empty()).then_some(chats)
 }
@@ -219,8 +186,6 @@ mod tests {
             unread,
             muted: false,
             mentioned: false,
-            pinned: false,
-            open: false,
         }
     }
 
@@ -290,7 +255,7 @@ mod tests {
             row("c", "滚进来的", None),
             row("d", "新聊天", Some(1)),
         ];
-        let keys: Vec<&str> = new_messages(&before, &now, true)
+        let keys: Vec<&str> = new_messages(&before, &now)
             .iter()
             .map(|r| r.key.as_str())
             .collect();
@@ -299,9 +264,9 @@ mod tests {
         let mut muted = row("a", "又一条", Some(3));
         muted.muted = true;
         let now = [muted, row("b", "好", Some(1))];
-        assert!(new_messages(&before, &now, true).is_empty());
-        assert!(muted_changed(&before, &now, true));
-        assert!(!muted_changed(&before, &before, true));
+        assert!(new_messages(&before, &now).is_empty());
+        assert!(muted_changed(&before, &now));
+        assert!(!muted_changed(&before, &before));
     }
 
     #[test]
@@ -314,8 +279,8 @@ mod tests {
         ] {
             let now = [parse("session_item_g", name).unwrap()];
             assert!(now[0].muted && now[0].mentioned, "{name}");
-            assert_eq!(new_messages(&before, &now, true).len(), 1, "{name}");
-            assert!(!muted_changed(&before, &now, true), "{name}");
+            assert_eq!(new_messages(&before, &now).len(), 1, "{name}");
+            assert!(!muted_changed(&before, &now), "{name}");
         }
         assert!(!before[0].mentioned);
     }
@@ -330,25 +295,20 @@ mod tests {
         ] {
             let now = [parse("session_item_g", name).unwrap()];
             assert!(now[0].muted && !now[0].mentioned, "{name}");
-            assert!(new_messages(&before, &now, true).is_empty(), "{name}");
-            assert!(muted_changed(&before, &now, true), "{name}");
+            assert!(new_messages(&before, &now).is_empty(), "{name}");
+            assert!(muted_changed(&before, &now), "{name}");
         }
     }
 
     #[test]
-    fn a_repeated_text_counts_when_the_open_chat_jumps_to_the_top() {
-        let mut pinned = row("p", "置顶的", None);
-        pinned.pinned = true;
-        let b = Session { open: true, ..row("b", "好的", None) };
-        let before = [pinned.clone(), row("a", "早", None), b.clone()];
-        let now = [pinned.clone(), b, row("a", "早", None)];
-        let keys: Vec<&str> = new_messages(&before, &now, true)
-            .iter()
-            .map(|r| r.key.as_str())
-            .collect();
-        assert_eq!(keys, ["b"]);
+    fn a_move_to_the_top_or_a_new_text_without_a_count_is_not_news() {
+        let before = [row("a", "早", None), row("b", "好的", None)];
+        let own = [row("b", "这都不占啥空间呀", None), row("a", "早", None)];
+        assert!(new_messages(&before, &own).is_empty());
+        let theirs = [row("b", "嗯", Some(1)), row("a", "早", None)];
+        assert_eq!(new_messages(&before, &theirs), [&theirs[0]]);
         let scrolled = [row("x", "很久以前", None), row("a", "早", None)];
-        assert!(new_messages(&before, &scrolled, true).is_empty());
-        assert!(new_messages(&before, &before, true).is_empty());
+        assert!(new_messages(&before, &scrolled).is_empty());
+        assert!(new_messages(&before, &before).is_empty());
     }
 }

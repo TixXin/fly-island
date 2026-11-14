@@ -26,6 +26,7 @@ import type { CollapsedSlots, IslandMode, IslandPage, NativeGlassState } from ".
 import { useGlassPointer } from "./useGlassPointer";
 import { useIslandPreparing } from "./useIslandPreparing";
 import { usePageFadeIn } from "./usePageFadeIn";
+import { DevWatermark } from "../../components/DevWatermark";
 import "./IslandShell.css";
 import "./IslandGlassLight.css";
 import { IslandResizeHints } from "./IslandResizeHints";
@@ -264,6 +265,7 @@ export function IslandShell({
           aria-hidden={!isExpanded}
           inert={!isExpanded}
         >
+          <DevWatermark place="panel" />
           {popup && notch && <NotchPopupBand page={page} agentVisualState={agentVisualState} onCollapse={onCollapse} />}
           <IslandHeader
             page={page}

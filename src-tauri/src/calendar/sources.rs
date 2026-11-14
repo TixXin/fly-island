@@ -43,7 +43,7 @@ pub(super) fn write(app_dir: &Path, sources: &[CalendarSource]) -> Result<(), Us
 }
 
 fn entry(id: &str) -> Result<Entry, UserError> {
-    Entry::new(CREDENTIAL_SERVICE, id).map_err(credential::open)
+    Entry::new(&crate::dev_lane::service(CREDENTIAL_SERVICE), id).map_err(credential::open)
 }
 
 pub(super) fn read_secret(id: &str) -> Result<Option<String>, UserError> {

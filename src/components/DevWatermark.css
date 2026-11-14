@@ -1,0 +1,31 @@
+.dev-watermark {
+  position: absolute;
+  z-index: 3;
+  color: rgba(var(--overlay-rgb, 255, 255, 255), 0.36);
+  font-family: var(--font-ui);
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.14em;
+  pointer-events: none;
+  user-select: none;
+}
+
+.dev-watermark--collapsed {
+  top: 3px;
+  left: 7px;
+  font-size: 8px;
+}
+
+.dev-watermark--panel {
+  top: 5px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.dev-watermark--settings {
+  top: 10px;
+  left: 50%;
+  font-size: 11px;
+  transform: translateX(-50%);
+}

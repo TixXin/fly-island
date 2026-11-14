@@ -33,14 +33,14 @@ function refusal(sha, conflicts, others, upstream) {
     `${describe(sha)} 叠不到 ${upstream} 上，没有开 PR。`,
     conflicts.length ? `  冲突的文件：${conflicts.join("、")}` : "",
     others.length
-      ? `  本地没带上、也改过这些文件的提交：\n${others.map((line) => `    ${line}`).join("\n")}\n  把它们一起写进 --only，或者整批 pnpm mq:land。`
-      : `  ${upstream} 上有人改了同一处：整批 pnpm mq:land，按提示解决冲突。`,
+      ? `  本地没带上、也改过这些文件的提交：\n${others.map((line) => `    ${line}`).join("\n")}\n  把它们一起写进 --only，或者整批 pnpm mq:land --yes。`
+      : `  ${upstream} 上有人改了同一处：整批 pnpm mq:land --yes，按提示解决冲突。`,
   ].filter(Boolean).join("\n");
 }
 
 export function pickOnto(upstream, requested) {
   const local = lines(tryGit(["rev-list", "--reverse", `${upstream}..HEAD`]).out);
-  if (!requested.length) return { error: "--only 后面要写提交号，例如 pnpm mq:land --only abc1234 def5678。" };
+  if (!requested.length) return { error: "--only 后面要写提交号，例如 pnpm mq:land --yes --only abc1234 def5678。" };
   const wanted = [];
   for (const name of requested) {
     const { sha, error } = resolve(name, local, upstream);

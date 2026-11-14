@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="zh-CN">
+  <meta charset="UTF-8" />
+  <title>开发版标记检查</title>
+  <style>
+    * { box-sizing: border-box; }
+    html body { height: auto; min-height: 100%; margin: 0; overflow: auto; background: #17191d; color: #eee; font: 14px "Segoe UI", "Microsoft YaHei", sans-serif; }
+    main { max-width: 760px; margin: 0 auto; padding: 24px; display: grid; gap: 16px; }
+    .box { position: relative; height: 44px; border-radius: 10px; background: #0c0d10; }
+    #rows { color: var(--color-page-text); font-family: var(--font-ui); }
+    #results { margin: 0; color: #ccc; font-size: 13px; line-height: 1.8; white-space: pre-wrap; }
+  </style>
+  <main>
+    <div class="box" id="marks"></div>
+    <div id="rows"></div>
+    <pre id="results" role="status">准备检查…</pre>
+  </main>
+  <script type="module" src="./dev-build.tsx"></script>
+</html>

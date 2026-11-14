@@ -46,6 +46,14 @@
   transform: translateX(16px);
 }
 
+.settings-switch input:disabled {
+  cursor: not-allowed;
+}
+
+.settings-switch input:disabled + .settings-switch__track {
+  opacity: 0.55;
+}
+
 .settings-switch input:focus-visible + .settings-switch__track {
   outline: 2px solid var(--color-focus-ring);
   outline-offset: 2px;

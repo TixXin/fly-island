@@ -26,7 +26,7 @@
 2. 推到本仓库（直接 clone `TixXin/fuyu`，不要 fork；从 fork 提的 PR，自动更新分支的工作流推不进去），开 PR，然后点 **Enable auto-merge**，合并方式选 **Create a merge commit**。
 3. CI 通过后 GitHub 自动合入，分支自动删除。CI 失败时在同一个分支上修好再推，PR 自动更新。
 
-仓库管理员的代理会话不用手动做这些：在本地 `main` 上攒一批提交后 `pnpm mq:land` 会推分支、开 PR、开启自动合并，`pnpm mq:wait` 等它合入（见 [workflow.md](docs/architecture/workflow.md)）。
+仓库管理员的代理会话不用手动做这些：在本地 `main` 上攒一批提交后 `pnpm mq:land --yes` 会推分支、开 PR、开启自动合并，`pnpm mq:wait` 等它合入（见 [workflow.md](docs/architecture/workflow.md)）。
 
 ### 外部贡献者
 
@@ -47,7 +47,7 @@ Thanks for helping with Fuyu. How the code is laid out and the rules it follows 
 **Pull requests are the only way into `main`**, for everyone including the owner: no direct pushes, CI's `check` must pass, and the PR must be built on the latest `main`. You do not have to keep it current yourself: a workflow brings PRs on auto-merge up to date one at a time, in the order auto-merge was turned on.
 
 - **Collaborators with Write access:** clone `TixXin/fuyu` itself rather than a fork (the workflow that keeps auto-merge PRs current cannot push to a fork's branch), branch from the latest `main`, push to this repository, open a PR and click **Enable auto-merge** (merge commit). GitHub merges it when CI passes and deletes the branch. If CI fails, push a fix to the same branch.
-- **The maintainer's agent sessions:** they commit on local `main` and, once a batch is ready, `pnpm mq:land` pushes it to a branch, opens the PR and turns on auto-merge; `pnpm mq:wait` follows it until it is merged (see [workflow.md](docs/architecture/workflow.md)).
+- **The maintainer's agent sessions:** they commit on local `main` and, once a batch is ready, `pnpm mq:land --yes` pushes it to a branch, opens the PR and turns on auto-merge; `pnpm mq:wait` follows it until it is merged (see [workflow.md](docs/architecture/workflow.md)).
 - **Everyone else:** fork, work on a branch of your fork and open a PR against `TixXin/fuyu`'s `main`. A maintainer will reply and turn on auto-merge once it is ready.
 
 **Setting up:** `pnpm install` points `core.hooksPath` at `.githooks` (pre-push blocks direct pushes to `main` and checks for AI attribution lines and task files; pre-commit asks for the files to be named when committing on `main`, `git commit -- <files>`, and leaves your own branches alone; commit-msg rejects Claude attribution lines), unless it is already set to another path. The repository's `.claude/settings.json` turns off Claude Code's commit and PR attribution. The maintainer's agent sessions work side by side on local `main` in the main checkout and land in batches (see [workflow.md](docs/architecture/workflow.md)); collaborators keep working on their own branches.

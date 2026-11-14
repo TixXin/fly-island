@@ -190,7 +190,7 @@ async fn fetch(provider: PlanProvider, key: &str) -> Result<PlanWindows, UsageEr
 }
 
 fn entry(provider: PlanProvider) -> Result<Entry, UserError> {
-    Entry::new(CREDENTIAL_SERVICE, provider.id()).map_err(credential::open)
+    Entry::new(&crate::dev_lane::service(CREDENTIAL_SERVICE), provider.id()).map_err(credential::open)
 }
 
 fn read_key(provider: PlanProvider) -> Result<Option<String>, UserError> {

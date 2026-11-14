@@ -10,7 +10,7 @@ use windows::{
             Accessibility::{
                 CUIAutomation8, IUIAutomation, IUIAutomation2, TreeScope_Children,
                 TreeScope_Descendants, UIA_ControlTypePropertyId, UIA_ListControlTypeId,
-                UIA_ListItemControlTypeId, UIA_SelectionItemIsSelectedPropertyId,
+                UIA_ListItemControlTypeId,
             },
             Input::KeyboardAndMouse::{
                 SendInput, INPUT, INPUT_0, INPUT_MOUSE, MOUSEEVENTF_LEFTDOWN, MOUSEEVENTF_LEFTUP,
@@ -29,7 +29,6 @@ pub(crate) struct ListRow {
     pub id: String,
     pub name: String,
     pub center: Option<POINT>,
-    pub selected: bool,
 }
 
 pub(crate) fn list_rows(window: HWND, prefix: &str) -> Option<Vec<ListRow>> {
@@ -113,15 +112,7 @@ fn read(window: HWND, prefix: &str) -> windows::core::Result<Option<Vec<ListRow>
                     .CurrentName()
                     .map(|name| name.to_string())
                     .unwrap_or_default();
-                let selected = item
-                    .GetCurrentPropertyValue(UIA_SelectionItemIsSelectedPropertyId)
-                    .is_ok_and(|value| bool::try_from(&value).unwrap_or(false));
-                rows.push(ListRow {
-                    id,
-                    name,
-                    center,
-                    selected,
-                });
+                rows.push(ListRow { id, name, center });
             }
         }
         Ok(Some(rows))

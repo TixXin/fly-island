@@ -56,6 +56,16 @@ pub(crate) fn clipboard_label(language: TrayLanguage, paused: bool) -> &'static 
     }
 }
 
+pub(crate) fn tooltip(language: TrayLanguage, development: bool) -> &'static str {
+    match (development, language) {
+        (false, _) => "Fuyu",
+        (true, TrayLanguage::Chinese) => "Fuyu 开发版",
+        (true, TrayLanguage::English) => "Fuyu Dev",
+    }
+}
+
+const TRAY_ID: &str = "main";
+
 struct TrayMenu {
     toggle: MenuItem<Wry>,
     translate: MenuItem<Wry>,
@@ -89,6 +99,9 @@ fn refresh(app: &AppHandle, language: Option<TrayLanguage>) {
     let _ = menu.clipboard.set_text(clipboard_label(next.0, next.3));
     let _ = menu.settings.set_text(settings);
     let _ = menu.quit.set_text(quit);
+    if let Some(tray) = app.tray_by_id(TRAY_ID) {
+        let _ = tray.set_tooltip(Some(tooltip(next.0, crate::dev_lane::lane().is_some())));
+    }
     *shown = next;
 }
 
@@ -108,8 +121,8 @@ pub(crate) fn build_tray(app: &App) -> tauri::Result<()> {
     let menu = Menu::with_items(app, &[&toggle, &translate, &screenshot, &clipboard, &settings, &quit])?;
     app.manage(TrayMenu { toggle, translate, screenshot, clipboard, settings, quit, shown: Mutex::new((TrayLanguage::Chinese, true, true, false, false)) });
 
-    let mut tray = TrayIconBuilder::new()
-        .tooltip("Fuyu")
+    let mut tray = TrayIconBuilder::with_id(TRAY_ID)
+        .tooltip(tooltip(TrayLanguage::Chinese, crate::dev_lane::lane().is_some()))
         .menu(&menu)
         .show_menu_on_left_click(true)
         .on_menu_event(|app, event| match event.id.as_ref() {
@@ -187,5 +200,13 @@ mod tests {
         assert_eq!(translate_label(TrayLanguage::English), "Quick Translate");
         assert_eq!(super::clipboard_label(TrayLanguage::Chinese, true), "恢复剪贴板记录");
         assert_eq!(super::screenshot_label(TrayLanguage::English), "Screenshot");
+    }
+
+    #[test]
+    fn only_a_development_build_says_so_in_the_tooltip() {
+        assert_eq!(super::tooltip(TrayLanguage::Chinese, false), "Fuyu");
+        assert_eq!(super::tooltip(TrayLanguage::English, false), "Fuyu");
+        assert_eq!(super::tooltip(TrayLanguage::Chinese, true), "Fuyu 开发版");
+        assert_eq!(super::tooltip(TrayLanguage::English, true), "Fuyu Dev");
     }
 }

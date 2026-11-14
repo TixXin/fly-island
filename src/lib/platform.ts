@@ -1,18 +1,26 @@
 import { useEffect, useState } from "react";
-import { readPlatformSupport, type PlatformFeature } from "./api.ts";
+import { readPlatformSupport, type PlatformFeature, type PlatformSupport } from "./api.ts";
 
 export type { PlatformFeature, PlatformSupport } from "./api.ts";
 
 export const isMacOS = typeof navigator !== "undefined" && /Macintosh|Mac OS X/.test(navigator.userAgent);
 
 const NONE: ReadonlySet<PlatformFeature> = new Set();
-let pending: Promise<ReadonlySet<PlatformFeature>> | null = null;
+let pending: Promise<PlatformSupport | null> | null = null;
+
+function loadPlatformSupport(): Promise<PlatformSupport | null> {
+  pending ??= readPlatformSupport()
+    .then((support) => support ?? null)
+    .catch(() => null);
+  return pending;
+}
 
 export function loadUnsupportedFeatures(): Promise<ReadonlySet<PlatformFeature>> {
-  pending ??= readPlatformSupport()
-    .then((support) => new Set(support.unsupported))
-    .catch(() => NONE);
-  return pending;
+  return loadPlatformSupport().then((support) => (Array.isArray(support?.unsupported) ? new Set(support.unsupported) : NONE));
+}
+
+export function loadDevBuild(): Promise<boolean> {
+  return loadPlatformSupport().then((support) => support?.devBuild === true);
 }
 
 export function useUnsupportedFeatures(): ReadonlySet<PlatformFeature> {
@@ -27,4 +35,18 @@ export function useUnsupportedFeatures(): ReadonlySet<PlatformFeature> {
     };
   }, []);
   return unsupported;
+}
+
+export function useDevBuild(): boolean {
+  const [devBuild, setDevBuild] = useState(false);
+  useEffect(() => {
+    let live = true;
+    void loadDevBuild().then((value) => {
+      if (live) setDevBuild(value);
+    });
+    return () => {
+      live = false;
+    };
+  }, []);
+  return devBuild;
 }

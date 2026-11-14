@@ -20,7 +20,7 @@ npm 包 `fuyu-plugin`（SDK、命令行工具、模拟宿主）和 `create-fuyu-
 
 ## 发布一个版本
 
-1. 把 `packages/fuyu-plugin/package.json` 和 `packages/create-fuyu-plugin/package.json` 改成同一个新版本号，运行 `pnpm sdk:build`，在 [更新日志](../../plugins/changelog.md) 当前开发中的岛屿版本下写上这次的变化，注明 npm 包版本，提交后 `pnpm mq:land`。
+1. 把 `packages/fuyu-plugin/package.json` 和 `packages/create-fuyu-plugin/package.json` 改成同一个新版本号，运行 `pnpm sdk:build`，在 [更新日志](../../plugins/changelog.md) 当前开发中的岛屿版本下写上这次的变化，注明 npm 包版本，提交后 `pnpm mq:land --yes`。
 2. 给合入后的提交打标签并推送：
 
    ```sh

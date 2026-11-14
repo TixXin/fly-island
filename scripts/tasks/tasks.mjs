@@ -41,7 +41,7 @@ function commitTasks(paths, message, options) {
   if (options["no-commit"]) return 0;
   git(["add", "-A", "--", ...paths]);
   git(["commit", "-q", "-m", message, "--", ...paths]);
-  console.log(`已提交「${message}」（只含任务文件），随下一批 PR 推上去：pnpm mq:land`);
+  console.log(`已提交「${message}」（只含任务文件），随下一批 PR 推上去：pnpm mq:land --yes`);
   return 0;
 }
 

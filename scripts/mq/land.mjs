@@ -69,7 +69,7 @@ export function mergeMain() {
     console.error(`  本地的提交和 ${upstream} 改了同一处，冲突的文件：${conflicts.join("、")}`);
     console.error("  这是两边提交的内容冲突；上面如果有 would be overwritten by merge，只说明普通合并先被没提交的文件挡了一下，不用等别的会话提交。");
   }
-  console.error(`自己 git merge ${upstream} 解决冲突、提交后，再 pnpm mq:land。`);
+  console.error(`自己 git merge ${upstream} 解决冲突、提交后，再 pnpm mq:land --yes。`);
   return null;
 }
 
@@ -134,7 +134,7 @@ export async function land(options = {}) {
   }
   const remoteBranch = `${landBranchName(github.login(), host, branch)}${chosen?.suffix ?? ""}`;
   if (!pushBranch(remoteBranch, rev)) {
-    console.error(`\n[land] 推送 ${remoteBranch} 失败，见上面的输出。修好后重新 pnpm mq:land。`);
+    console.error(`\n[land] 推送 ${remoteBranch} 失败，见上面的输出。修好后重新 pnpm mq:land --yes。`);
     return 1;
   }
   const text = prText(commits, branch, { title, body, files: changedFiles(rev) });
@@ -145,7 +145,7 @@ export async function land(options = {}) {
   } else {
     pr = github.createPr({ head: remoteBranch, base: INTEGRATION_BRANCH, ...text });
     console.log(`[land] 开了 PR #${pr.number}：${pr.url}`);
-    if (!body) console.log("  没给 --body，正文是从提交自动生成的骨架；补中文说明：写好文件后 pnpm mq:land --body <文件>");
+    if (!body) console.log("  没给 --body，正文是从提交自动生成的骨架；补中文说明：写好文件后 pnpm mq:land --yes --body <文件>");
   }
   try {
     github.autoMerge(pr.number);

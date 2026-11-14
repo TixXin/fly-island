@@ -17,6 +17,7 @@ export const PAGES = [
   "session-ring.html?test=1",
   "collapsed-message-animation.html?test=1",
   "collapsed-slots.html?test=1",
+  "dev-build.html",
   "notch-island.html?test=1",
   "message-banner.html?test=1",
   "message-panel.html?test=1",

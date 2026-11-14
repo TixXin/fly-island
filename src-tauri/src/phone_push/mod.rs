@@ -13,7 +13,7 @@ const DEFAULT_SERVER: &str = "https://api.day.app";
 const MAX_FIELD_CHARS: usize = 300;
 
 fn entry() -> Result<Entry, UserError> {
-    Entry::new(CREDENTIAL_SERVICE, CREDENTIAL_USER).map_err(credential::open)
+    Entry::new(&crate::dev_lane::service(CREDENTIAL_SERVICE), CREDENTIAL_USER).map_err(credential::open)
 }
 
 fn read_key() -> Result<Option<String>, UserError> {

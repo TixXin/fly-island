@@ -48,7 +48,7 @@ test("without a written body the PR gets a Chinese skeleton, the English commit 
   assert.equal(body, [
     "## 改了什么",
     "",
-    "> land 时没有给中文说明（`pnpm mq:land --body <文件>`），下面是从提交自动生成的。",
+    "> land 时没有给中文说明（`pnpm mq:land --yes --body <文件>`），下面是从提交自动生成的。",
     "",
     "- `fix(a): one`",
     "- `docs: two`",

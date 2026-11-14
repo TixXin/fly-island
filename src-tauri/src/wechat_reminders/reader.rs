@@ -38,7 +38,6 @@ pub(super) struct ChatReader<L: FnMut() -> Listing> {
     muted_changed: bool,
     rebase: Option<Instant>,
     in_wechat: bool,
-    visited: bool,
     allowed: bool,
 }
 
@@ -52,7 +51,6 @@ impl<L: FnMut() -> Listing> ChatReader<L> {
             muted_changed: false,
             rebase: None,
             in_wechat: false,
-            visited: false,
             allowed,
         };
         reader.rebaseline();
@@ -64,7 +62,6 @@ impl<L: FnMut() -> Listing> ChatReader<L> {
             Some(Listing::Rows(rows)) => Some(rows),
             _ => None,
         };
-        self.visited = self.in_wechat;
     }
 
     pub(super) fn set_allowed(&mut self, allowed: bool) {
@@ -90,7 +87,6 @@ impl<L: FnMut() -> Listing> ChatReader<L> {
 
     pub(super) fn activated(&mut self, in_wechat: bool, now: Instant) {
         let left = std::mem::replace(&mut self.in_wechat, in_wechat) && !in_wechat;
-        self.visited |= in_wechat;
         if left && self.due.is_none() {
             self.rebase = Some(now + SETTLE);
         }
@@ -101,7 +97,6 @@ impl<L: FnMut() -> Listing> ChatReader<L> {
             self.rebase = None;
             if let Some(Listing::Rows(rows)) = self.allowed.then(|| (self.look)()) {
                 self.seen = Some(rows);
-                self.visited = self.in_wechat;
             }
         }
         if !self.due.is_some_and(|at| now >= at) {
@@ -113,14 +108,12 @@ impl<L: FnMut() -> Listing> ChatReader<L> {
         }
         let reason = match ((self.look)(), self.seen.take()) {
             (Listing::Rows(rows), Some(before)) => {
-                let open_counts = !self.visited;
-                let fresh: Vec<Session> = chats::new_messages(&before, &rows, open_counts)
+                let fresh: Vec<Session> = chats::new_messages(&before, &rows)
                     .into_iter()
                     .cloned()
                     .collect();
-                self.muted_changed |= chats::muted_changed(&before, &rows, open_counts);
+                self.muted_changed |= chats::muted_changed(&before, &rows);
                 self.seen = Some(rows);
-                self.visited = self.in_wechat;
                 if !fresh.is_empty() {
                     self.due = None;
                     return Some(Flash::Messages(fresh));
@@ -133,7 +126,6 @@ impl<L: FnMut() -> Listing> ChatReader<L> {
             }
             (Listing::Rows(rows), None) => {
                 self.seen = Some(rows);
-                self.visited = self.in_wechat;
                 self.due = None;
                 return Some(Flash::Plain(Some(PlainReason::Baseline)));
             }
@@ -171,16 +163,14 @@ mod tests {
     use super::*;
     use std::{cell::RefCell, collections::VecDeque, rc::Rc};
 
-    fn row(key: &str, preview: &str, muted: bool) -> Session {
+    fn row(key: &str, preview: &str, unread: u32, muted: bool) -> Session {
         Session {
             key: key.into(),
             contact: key.into(),
             preview: preview.into(),
-            unread: None,
+            unread: Some(unread),
             muted,
             mentioned: false,
-            pinned: false,
-            open: true,
         }
     }
 
@@ -216,16 +206,16 @@ mod tests {
 
     #[test]
     fn a_busy_wechat_is_read_again_before_the_reminder_goes_out_plain() {
-        let before = vec![row("a", "hi", false)];
+        let before = vec![row("a", "hi", 0, false)];
         let (mut reader, looks) = reader(Listing::Rows(before.clone()));
         looks.borrow_mut().extend([
             Listing::Unreadable,
-            Listing::Rows(vec![row("a", "new", false)]),
+            Listing::Rows(vec![row("a", "new", 1, false)]),
         ]);
         let start = Instant::now();
         assert_eq!(
             flash(&mut reader, start),
-            (Flash::Messages(vec![row("a", "new", false)]), 2)
+            (Flash::Messages(vec![row("a", "new", 1, false)]), 2)
         );
         looks.borrow_mut().extend([
             Listing::Unreadable,
@@ -238,18 +228,18 @@ mod tests {
         );
         looks
             .borrow_mut()
-            .push_back(Listing::Rows(vec![row("a", "newer", false)]));
+            .push_back(Listing::Rows(vec![row("a", "newer", 2, false)]));
         assert_eq!(
             flash(&mut reader, start).0,
-            Flash::Messages(vec![row("a", "newer", false)])
+            Flash::Messages(vec![row("a", "newer", 2, false)])
         );
     }
 
     #[test]
     fn plain_reminders_say_why() {
         let (mut reader, looks) = reader(Listing::Rows(vec![
-            row("a", "hi", false),
-            row("m", "old", true),
+            row("a", "hi", 0, false),
+            row("m", "old", 0, true),
         ]));
         let start = Instant::now();
         looks.borrow_mut().push_back(Listing::Tray);
@@ -257,19 +247,19 @@ mod tests {
             flash(&mut reader, start),
             (Flash::Plain(Some(PlainReason::Tray)), 1)
         );
-        let same = || Listing::Rows(vec![row("a", "hi", false), row("m", "old", true)]);
+        let same = || Listing::Rows(vec![row("a", "hi", 0, false), row("m", "old", 0, true)]);
         looks.borrow_mut().extend([same(), same(), same()]);
         assert_eq!(
             flash(&mut reader, start),
             (Flash::Plain(Some(PlainReason::Unchanged)), READS)
         );
-        let muted = || Listing::Rows(vec![row("a", "hi", false), row("m", "new", true)]);
+        let muted = || Listing::Rows(vec![row("a", "hi", 0, false), row("m", "new", 1, true)]);
         looks.borrow_mut().extend([muted(), muted(), muted()]);
         assert_eq!(
             flash(&mut reader, start),
             (Flash::Plain(Some(PlainReason::Muted)), READS)
         );
-        let newer = Listing::Rows(vec![row("a", "hi", false), row("m", "newer", true)]);
+        let newer = Listing::Rows(vec![row("a", "hi", 0, false), row("m", "newer", 2, true)]);
         looks.borrow_mut().push_back(newer);
         assert_eq!(
             flash(&mut reader, start),
@@ -288,7 +278,7 @@ mod tests {
         );
         looks
             .borrow_mut()
-            .push_back(Listing::Rows(vec![row("a", "hi", false)]));
+            .push_back(Listing::Rows(vec![row("a", "hi", 0, false)]));
         reader.flashed(start);
         assert_eq!(
             reader.tick(start),
@@ -297,7 +287,7 @@ mod tests {
         reader.set_allowed(false);
         looks
             .borrow_mut()
-            .push_back(Listing::Rows(vec![row("a", "new", false)]));
+            .push_back(Listing::Rows(vec![row("a", "new", 1, false)]));
         reader.flashed(start);
         assert_eq!(reader.tick(start), Some(Flash::Plain(None)));
         assert_eq!(looks.borrow().len(), 1, "off, the list is not read");

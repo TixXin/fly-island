@@ -47,7 +47,7 @@
 ├── tests/               # unit/ 前端单元测试、scripts/ 脚本测试（node:test，*.test.mjs）；regression/ 浏览器回归页（*.html + *.tsx）
 ├── packages/            # 插件开发者工具（pnpm workspace）：fuyu-plugin（Node SDK、CLI、模拟宿主）、create-fuyu-plugin（脚手架）、powershell/Fuyu.Plugin；vscode-extension（切到会话终端的 VS Code 扩展，不在 workspace 里，`pnpm dlx @vscode/vsce package --no-dependencies` 打包）；不进入岛屿的发布产物
 ├── plugins/             # 插件市场：examples/ 示例插件源码（PowerShell，含 lib/focusd.ps1），drafts/ 写好了、还没打包签名的官方插件（签名私钥只在 Windows 那台机器上，说明见 plugins/drafts/README.md），schema/ 协议描述，market/ 每个市场插件的元数据（发布者、分类，生成索引用），sdk/ 单文件 SDK（pnpm sdk:build 从 packages/ 生成），packages/ 打包好的 zip，index.json 与 index.json.sig 给切换前的旧版岛屿的市场索引（pnpm plugins:index 生成；新版岛屿读 TixXin/fuyu-plugins），signing-keys.json 可信公钥（编译进岛屿），revoked.json 与 revoked.json.sig 撤销名单，author-key.json 官方作者签名公钥；不进入发布产物
-├── scripts/             # release/ 发布、签名与 latest.json 生成；readme/ 生成仓库首页 README 用的 SVG；plugins/ 插件索引、签名与 SDK 生成；mq/ 攒批开 PR 合入（`pnpm mq:*` 和 pre-push 检查）；island-lab/ 岛屿实验台（`pnpm lab`）；根目录放开发流程脚本：合并队列的检查（land-check.mjs）、行数检查、浏览器回归页运行器（run-regression.mjs）、dev 前停止运行中的岛屿
+├── scripts/             # release/ 发布、签名与 latest.json 生成；readme/ 生成仓库首页 README 用的 SVG；plugins/ 插件索引、签名与 SDK 生成；mq/ 攒批开 PR 合入（`pnpm mq:*` 和 pre-push 检查）；island-lab/ 岛屿实验台（`pnpm lab`）；根目录放开发流程脚本：合并队列的检查（land-check.mjs）、Claude Code 的 PreToolUse 钩子（agent-harness-gate.mjs，改各家 AI 代理的接入点前要先加载 `fuyu-agent-harness` skill，登记在 `.claude/settings.json`）、行数检查、浏览器回归页运行器（run-regression.mjs）、dev 前停止运行中的岛屿
 ├── video/               # 宣传视频：真的前端加假后端在浏览器里跑，按时间表逐帧渲染成 MP4；自带 package.json，不在 workspace 里（用法见 video/README.md）；成片不进仓库
 ├── .githooks/           # pre-push：合并队列的推送保护与检查；pre-commit：在 main 上提交必须写文件名（`git commit -- <文件>`），免得带走别的会话暂存的改动；commit-msg：拒绝 Claude 署名行（只管本仓库自己的提交，合入的外部 PR 可以带；core.hooksPath 指向这里）
 ├── docs/                # 按文档性质分目录，索引和各目录放什么见 docs/README.md：features/ 功能说明，architecture/ 架构与契约（agent/、plugins/ 内部设计，history/ 做完的计划），design/ 界面约定，plugins/ 插件开发，investigations/ 自己应用的排查与验收，research/ 外部调研，reviews/ PR 评审，releases/ 发布说明，assets/ 演示视频与图片，tasks/ 任务（README.md 是规则，按编号首字母分文件夹，0-archive/ 放已结束的）
@@ -81,7 +81,7 @@
 | 完整打包 | `pnpm tauri build` |
 | 改版本号、起草发布说明 | `pnpm release:version <版本号>`（四处版本号一起改，不要手动改） |
 | 发布 | `pnpm release`（流程见 `docs/features/updater.md`） |
-| 合入 main | `pnpm mq:pending`（本地还没推的提交，到没到该提 PR 的时候）；`pnpm mq:land --body <中文 PR 正文文件>`（先把 `origin/main` merge 进来，推到 `land/…` 分支、开 PR 并开启自动合并，正文格式见 workflow.md「PR 的标题和正文」），再后台 `pnpm mq:wait` 等合入并把本地 `main` 跟上；只想先合入几个独立的提交用 `pnpm mq:land --only <提交号…>`（单独的 PR，不碰工作区，见 workflow.md）；手动跟上 `pnpm mq:sync`（都在 `scripts/mq/`） |
+| 合入 main | `pnpm mq:pending`（本地还没推的提交，到没到该提 PR 的时候）；`pnpm mq:land --yes --body <中文 PR 正文文件>`（先把 `origin/main` merge 进来，推到 `land/…` 分支、开 PR 并开启自动合并，正文格式见 workflow.md「PR 的标题和正文」），再后台 `pnpm mq:wait` 等合入并把本地 `main` 跟上；只想先合入几个独立的提交用 `pnpm mq:land --yes --only <提交号…>`（单独的 PR，不碰工作区，见 workflow.md）；手动跟上 `pnpm mq:sync`（都在 `scripts/mq/`） |
 
 如果运行环境禁止派生子进程（例如受限沙箱），`node --test` 需要加 `--test-isolation=none`。此时 `tests/scripts/release-manifest.test.mjs` 仍会因 `spawnSync` 被拦截而失败，这是环境限制，报告时应如实说明。如果 `vite build` 报错无法删除系统临时目录中的 esbuild 文件（Access is denied），可以把 `TEMP` / `TMP` 指向 `node_modules/.cache/` 下的目录后重试。
 
@@ -158,13 +158,13 @@
 ## Git 与协作
 
 - **谁怎么合入 `main`，看 GitHub 权限**。`main` 上有 GitHub 规则集 `main protection`（仓库 Settings → Rules）：必须通过 PR 合入，CI 的 `check` 必须通过，PR 必须基于最新的 `main`（落后时点 "Update branch" 或 rebase，CI 重跑），禁止强推和删除。仓库管理员（TixXin）只能在 PR 上绕过（`bypass_mode: pull_request`，2026-11-13 起，F30 第 8 步）：紧急时可以 `gh pr merge --admin` 不等 CI，但谁都不能直接推、强推或删除 `main`。
-  - **仓库管理员和协作者的会话**：在本地 `main` 上提交，攒成一批后 `pnpm mq:land`。land 先把最新的 `origin/main` merge 进来，推到自己的 `land/…` 分支，开 PR 并开启自动合并；CI 的 `check` 通过后由 GitHub 合入，所以要有本仓库的 Write 权限（2026-11-13 起，F30）。
+  - **仓库管理员和协作者的会话**：在本地 `main` 上提交，攒成一批后 `pnpm mq:land --yes`。land 先把最新的 `origin/main` merge 进来，推到自己的 `land/…` 分支，开 PR 并开启自动合并；CI 的 `check` 通过后由 GitHub 合入，所以要有本仓库的 Write 权限（2026-11-13 起，F30）。
   - **其他协作者（Write 权限，目前是 ShengLin1001）和外部贡献者**：在自己的分支上开发。协作者把分支直接推到本仓库（`TixXin/fuyu`）再提 PR；外部贡献者从本仓库 fork 后提 PR。本仓库 2026-11-10 起已脱离 `flyl1u/fly-island` 的 fork 网络，从上游 fork 出来的仓库不能再向本仓库提 PR。不要从上游同步或合并提交；CI 通过、分支跟上最新 `main` 后再合入。协作者可以自己合，也可以等仓库管理员按下面「外部 PR」的做法合。合入用 merge 或 squash，不改写别人已经推送的分支。
   - 开发期间不要求一直跟着 `origin/main`：开工前、land 前各同步一次（`pnpm mq:sync`）。合入那一刻都基于最新的 `main`，这一点由 land 的 merge 和规则集保证。
 - **所有会话都在主工作区、本地 `main` 上工作，攒成一批再经 PR 合入**（2026-11-13 起去掉了 lane，F32）。做法、取舍和排障见 [docs/architecture/workflow.md](docs/architecture/workflow.md)。必须遵守的是这几条：
   - **不开 worktree、不切分支**：用户的 `pnpm tauri dev` 和别的会话都在这份代码上，切分支会冲掉别人正在改的文件。不要 `git stash`、`git reset`、`git checkout -- <文件>` 动别人的改动。
   - **只提交自己的文件**：`git add <具体文件>` 或 `git commit -- <文件>`，不用 `git add -A` / `git add .`。两个会话不同时改一个文件：认领时写 `--scope`，开工前可以 `pnpm tasks conflicts`。
-  - **攒着提 PR，不是一个小改动一个 PR**。下面任一条满足时 `pnpm mq:land --body <文件>`，不用问用户：一个任务做完；本地没推的提交有 5 个以上或最早的超过 6 小时（`pnpm mq:pending` 会说）；另一台机器或协作者要用、要发版、或用户说「推一下」。顺手的小修复、文案、文档先攒着。PR 标题用英文，正文用中文写在文件里，一批几样东西时按功能分节（格式见 workflow.md「PR 的标题和正文」）。land 之后在后台 `pnpm mq:wait`，PR 合入才算完成，冲突或检查没过都不算。别人提的 PR 不走 land，按 workflow.md「外部 PR」合入。
+  - **攒着提 PR，不是一个小改动一个 PR**。下面任一条满足时 `pnpm mq:land --yes --body <文件>`，不用问用户：一个任务做完；本地没推的提交有 5 个以上或最早的超过 6 小时（`pnpm mq:pending` 会说）；另一台机器或协作者要用、要发版、或用户说「推一下」。顺手的小修复、文案、文档先攒着。PR 标题用英文，正文用中文写在文件里，一批几样东西时按功能分节（格式见 workflow.md「PR 的标题和正文」）。land 之后在后台 `pnpm mq:wait`，PR 合入才算完成，冲突或检查没过都不算。别人提的 PR 不走 land，按 workflow.md「外部 PR」合入。
   - `main` 只经 land 或在 GitHub 上合入 PR 移动，不手动推送。
   - 代理的 Rust 构建用 `src-tauri/target/agents`，不要用用户 dev 的 `debug`；代理不跑 `pnpm tauri dev`，用户自己跑。
 - 修改前先查看 `git status --short`，不要覆盖用户或别的会话已有的改动。

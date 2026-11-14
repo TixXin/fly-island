@@ -23,7 +23,7 @@ function pending() {
   const commits = pendingCommits();
   for (const { subject } of commits) console.log(`  ${subject}`);
   const { due, reason } = batchAdvice(commits);
-  console.log(due ? `[pending] ${reason}，该提 PR 了：pnpm mq:land --body <文件>` : `[pending] ${reason}；一个功能做完、要给另一台机器用或发版前再提 PR`);
+  console.log(due ? `[pending] ${reason}，该提 PR 了：pnpm mq:land --yes --body <文件>` : `[pending] ${reason}；一个功能做完、要给另一台机器用或发版前再提 PR`);
   return 0;
 }
 
@@ -40,8 +40,42 @@ export function listOption(args, name) {
   return end < 0 ? rest : rest.slice(0, end);
 }
 
+const LAND_OPTIONS = ["--yes", "--wait", "--body", "--title", "--only"];
+
+const HELP = [
+  "用法：node scripts/mq/mq.mjs <命令> [参数]",
+  "",
+  "  pending                 列出本地还没推的提交，说到没到该提 PR 的时候",
+  "  land --yes [参数]       把本地提交推到 land/ 分支、开 PR 并开启自动合并；不写 --yes 不会推",
+  "      --body <文件>       中文 PR 正文",
+  "      --title <标题>      英文 PR 标题，默认取第一个提交的标题",
+  "      --only <提交号…>    只带这几个提交，开单独的 PR",
+  "      --wait              在前台等到合入",
+  "  wait [PR 号] [--update]  等 PR 合入，把本地 main 跟上；--update 在它落后时更新分支",
+  "  sync                    把 origin/main 合进本地 main",
+  "  check-push、check-commit  git 钩子用",
+  "",
+  "任何命令带 --help 或 -h，以及不带参数的 land，都只显示这份说明。",
+].join("\n");
+
+export function landRequest(args) {
+  if (!args.length) return { help: true };
+  const unknown = args.find((arg) => arg.startsWith("-") && !LAND_OPTIONS.includes(arg));
+  if (unknown) return { error: `land 不认识参数 ${unknown}。` };
+  if (!args.includes("--yes")) return { error: "land 会推送并开 PR，确认要推就加上 --yes。" };
+  return { options: { wait: args.includes("--wait"), bodyFile: option(args, "--body"), title: option(args, "--title"), only: listOption(args, "--only") } };
+}
+
+function landCommand(args) {
+  const request = landRequest(args);
+  if (request.options) return land(request.options);
+  if (request.error) console.error(`[land] ${request.error}\n`);
+  console.log(HELP);
+  return request.error ? 1 : 0;
+}
+
 const COMMANDS = {
-  land: (args) => land({ wait: args.includes("--wait"), bodyFile: option(args, "--body"), title: option(args, "--title"), only: listOption(args, "--only") }),
+  land: landCommand,
   wait: (args) => waitCommand(args),
   sync: () => sync(),
   pending,
@@ -50,9 +84,14 @@ const COMMANDS = {
 };
 
 export async function main(argv) {
+  if (!argv.length || argv.includes("--help") || argv.includes("-h")) {
+    console.log(HELP);
+    return 0;
+  }
   const run = COMMANDS[argv[0]];
   if (!run) {
-    console.error(`用法：node scripts/mq/mq.mjs <${Object.keys(COMMANDS).join("|")}>`);
+    console.error(`[mq] 没有 ${argv[0]} 这个命令。\n`);
+    console.log(HELP);
     return 1;
   }
   return run(argv.slice(1));

@@ -32,11 +32,11 @@ export async function waitFor(number, options = {}) {
     if (failed.length) {
       console.error(`[wait] PR #${number} 的检查没通过，自动合并会一直等着：`);
       for (const { name, url } of failed) console.error(`  ${name}  ${url}`);
-      console.error("修好、提交，再 pnpm mq:land，PR 会自动更新。");
+      console.error("修好、提交，再 pnpm mq:land --yes，PR 会自动更新。");
       return 1;
     }
     if (pr.mergeStateStatus === "DIRTY") {
-      console.error(`[wait] PR #${number} 和 ${INTEGRATION_BRANCH} 冲突了。重新 pnpm mq:land（会先把 origin/${INTEGRATION_BRANCH} 合进来），按提示解决冲突。`);
+      console.error(`[wait] PR #${number} 和 ${INTEGRATION_BRANCH} 冲突了。重新 pnpm mq:land --yes（会先把 origin/${INTEGRATION_BRANCH} 合进来），按提示解决冲突。`);
       return 1;
     }
     if (pr.mergeStateStatus === "BEHIND" && updateBehind) {
@@ -59,7 +59,7 @@ export async function waitCommand(args = [], { github = realGitHub, host = hostn
     const branch = tryGit(["rev-parse", "--abbrev-ref", "HEAD"]).out.trim();
     const pr = github.findPr(landBranchName(github.login(), host, branch), "all");
     if (!pr) {
-      console.error(`[wait] ${branch} 没有对应的 PR。先 pnpm mq:land，或者 pnpm mq:wait <PR 号>。`);
+      console.error(`[wait] ${branch} 没有对应的 PR。先 pnpm mq:land --yes，或者 pnpm mq:wait <PR 号>。`);
       return 1;
     }
     number = pr.number;

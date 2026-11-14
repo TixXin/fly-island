@@ -133,7 +133,7 @@ pub fn copy_translation_result(text: String) -> Result<(), UserError> {
 }
 
 fn entry(provider: &Provider) -> Result<Entry, UserError> {
-    Entry::new("com.tixxin.fuyu.translation", provider.id).map_err(credential::open)
+    Entry::new(&crate::dev_lane::service("com.tixxin.fuyu.translation"), provider.id).map_err(credential::open)
 }
 
 fn read_secret(provider: &Provider) -> Result<Option<String>, UserError> {

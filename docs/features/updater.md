@@ -157,7 +157,7 @@ pnpm tauri signer generate -w $env:USERPROFILE\.tauri\fly-island.key
    gh release download beta-channel --repo TixXin/fuyu --pattern latest.json --dir $env:TEMP\beta --clobber
    ```
 
-版本号和发布说明的提交照常 `pnpm mq:land` 到 `main`（D25：只改了四处版本号和 Markdown 时，land 只核对版本号一致并跑任务检查，不跑 `pnpm check`），合入后在主工作区运行 `pnpm release`；别的会话在工作区里有没提交的改动也不用等它们，也不用开临时 worktree。land 推上去之后马上 `pnpm release:prebuild`，两边的 CI 构建和 PR 的检查同时跑；合入后 `pnpm release` 看到合并提交的代码树和预构建一样就直接用（F37，见 [release-ci.md](/docs/architecture/release-ci.md)「提速」）。发布前先 `pnpm mq:sync` 跟上 `origin/main`，并确认本地 `main` 上没有还没合入的提交（`pnpm mq:pending`）：发出去的要和 `main` 一致。
+版本号和发布说明的提交照常 `pnpm mq:land --yes` 到 `main`（D25：只改了四处版本号和 Markdown 时，land 只核对版本号一致并跑任务检查，不跑 `pnpm check`），合入后在主工作区运行 `pnpm release`；别的会话在工作区里有没提交的改动也不用等它们，也不用开临时 worktree。land 推上去之后马上 `pnpm release:prebuild`，两边的 CI 构建和 PR 的检查同时跑；合入后 `pnpm release` 看到合并提交的代码树和预构建一样就直接用（F37，见 [release-ci.md](/docs/architecture/release-ci.md)「提速」）。发布前先 `pnpm mq:sync` 跟上 `origin/main`，并确认本地 `main` 上没有还没合入的提交（`pnpm mq:pending`）：发出去的要和 `main` 一致。
 
 ### Mac 版（G1.13）
 

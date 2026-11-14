@@ -8,7 +8,7 @@ import { commitBlock } from "../../scripts/mq/checkCommit.mjs";
 import { parseRefUpdates, pushBlock } from "../../scripts/mq/checkPush.mjs";
 import { land, landRefusal, pendingCommits, uncommittedNote } from "../../scripts/mq/land.mjs";
 import { conflictedFiles } from "../../scripts/mq/mergeTree.mjs";
-import { batchAdvice, listOption } from "../../scripts/mq/mq.mjs";
+import { batchAdvice, landRequest, listOption, main } from "../../scripts/mq/mq.mjs";
 import { failedChecks, landBranchName, prText } from "../../scripts/mq/github.mjs";
 import { queueOrder, updateBehind } from "../../scripts/mq/updateBehind.mjs";
 import { waitFor } from "../../scripts/mq/wait.mjs";
@@ -318,4 +318,25 @@ test("only the first PR in line is brought up to date; drafts, conflicts and fai
   const current = run(0);
   assert.deepEqual(current.updated, [], "nothing is updated while the first in line is current");
   assert.match(current.said, /#4 已经基于最新的 main/);
+});
+
+test("land pushes only with --yes; no arguments, --help and unknown options show the help instead", async () => {
+  assert.deepEqual(landRequest([]), { help: true });
+  assert.match(landRequest(["--body", "x.md"]).error, /--yes/);
+  assert.match(landRequest(["--yes", "--dry-run"]).error, /--dry-run/);
+  assert.deepEqual(landRequest(["--yes", "--body", "x.md", "--only", "a1", "b2"]).options, { wait: false, bodyFile: "x.md", title: null, only: ["a1", "b2"] });
+  assert.deepEqual(landRequest(["--yes"]).options, { wait: false, bodyFile: null, title: null, only: null });
+  for (const argv of [[], ["--help"], ["land"], ["land", "--help"], ["land", "--yes", "-h"], ["sync", "--help"]]) {
+    let code;
+    const said = await captured(async () => { code = await main(argv); });
+    assert.equal(code, 0, argv.join(" "));
+    assert.match(said, /^用法：/, argv.join(" "));
+  }
+  let code;
+  const refused = await captured(async () => { code = await main(["land", "--body", "x.md"]); });
+  assert.equal(code, 1);
+  assert.match(refused, /加上 --yes/);
+  const unknown = await captured(async () => { code = await main(["lnad"]); });
+  assert.equal(code, 1);
+  assert.match(unknown, /没有 lnad 这个命令/);
 });

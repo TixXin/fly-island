@@ -112,7 +112,7 @@ fn read_index(path: &Path) -> BTreeMap<String, Vec<String>> {
 }
 
 fn entry(plugin_id: &str, key: &str) -> Result<Entry, (u16, String)> {
-    Entry::new(&format!("{SECRET_SERVICE_PREFIX}{plugin_id}"), key)
+    Entry::new(&crate::dev_lane::service(&format!("{SECRET_SERVICE_PREFIX}{plugin_id}")), key)
         .map_err(|_| (500, format!("Could not open the {SECRET_STORE}.")))
 }
 

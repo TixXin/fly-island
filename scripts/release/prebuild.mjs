@@ -45,7 +45,7 @@ function prebuild() {
   if (!version || versions.some((found) => found !== version)) throw new Error("The four version files disagree; run pnpm release:version first.");
   const revision = git(["rev-parse", "HEAD"]);
   if (!git(["branch", "-r", "--contains", revision]).includes("origin/")) {
-    throw new Error(`${revision} is not on GitHub yet: run pnpm mq:land first, then this.`);
+    throw new Error(`${revision} is not on GitHub yet: run pnpm mq:land --yes first, then this.`);
   }
   const tree = git(["rev-parse", "HEAD^{tree}"]);
   const record = { version, revision, tree, at: new Date().toISOString() };

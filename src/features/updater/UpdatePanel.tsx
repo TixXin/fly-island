@@ -2,6 +2,7 @@ import { useEffect, useSyncExternalStore } from "react";
 import { ArrowDownToLine, CircleCheck, Download, LoaderCircle, PackageCheck, RefreshCcw, TriangleAlert } from "lucide-react";
 import { SettingsLinkButton } from "../../components/settings/SettingsLinkButton";
 import { useErrorText, useLocale, useTranslation } from "../../i18n";
+import { useDevBuild } from "../../lib/platform";
 import { ProjectLink } from "./ProjectLink";
 import { websitePage } from "./projectLinks";
 import { UpdateNotes } from "./UpdateNotes";
@@ -37,6 +38,7 @@ function StageIcon({ stage }: { stage: UpdateStage }) {
 export function UpdatePanel() {
   const t = useTranslation();
   const text = t.settings.project.update;
+  const devBuild = useDevBuild();
   const hero = t.settings.project.hero;
   const errorText = useErrorText();
   const { locale } = useLocale();
@@ -55,7 +57,7 @@ export function UpdatePanel() {
         href={websitePage(locale, "releases/")}
         tone="release"
         title={t.settings.project.latestRelease}
-        hint={text.unavailable}
+        hint={devBuild ? t.settings.devBuild.updateOff : text.unavailable}
         icon={<Download className="project-link__icon" size={18} strokeWidth={1.8} aria-hidden="true" />}
       />
     );

@@ -7,6 +7,7 @@ import type { SettingsCollapsedItemsText } from "./collapsedItems";
 import type { SettingsThemeMarketText } from "./themeMarket";
 import type { SettingsResetAppearanceText } from "./resetAppearance";
 import type { SettingsWindowControlsText } from "./windowControls";
+import type { SettingsDevBuildText } from "./devBuild";
 import type { SettingsCategoriesText } from "./categories";
 import type { SettingsBehaviorText } from "./behavior";
 import type { SettingsTranslationText } from "./translation";
@@ -45,6 +46,7 @@ import * as collapsedItems from "./collapsedItems.ts";
 import * as themeMarket from "./themeMarket.ts";
 import * as resetAppearance from "./resetAppearance.ts";
 import * as windowControls from "./windowControls.ts";
+import * as devBuild from "./devBuild.ts";
 import * as categories from "./categories.ts";
 import * as behavior from "./behavior.ts";
 import * as translation from "./translation.ts";
@@ -87,6 +89,7 @@ export type SettingsText = {
   title: string;
   resetAppearance: SettingsResetAppearanceText;
   windowControls: SettingsWindowControlsText;
+  devBuild: SettingsDevBuildText;
 
   categories: SettingsCategoriesText;
 
@@ -148,6 +151,7 @@ export const zhCN: SettingsText = {
   title: "设置",
   resetAppearance: resetAppearance.zhCN,
   windowControls: windowControls.zhCN,
+  devBuild: devBuild.zhCN,
 
   categories: categories.zhCN,
 
@@ -209,6 +213,7 @@ export const en: SettingsText = {
   title: "Settings",
   resetAppearance: resetAppearance.en,
   windowControls: windowControls.en,
+  devBuild: devBuild.en,
 
   categories: categories.en,
 

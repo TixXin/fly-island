@@ -4,7 +4,7 @@ use keyring::{Entry, Error as KeyringError};
 const CREDENTIAL_SERVICE: &str = "com.tixxin.fuyu.qq-mail";
 
 pub(super) fn credential(email: &str) -> Result<Entry, UserError> {
-    Entry::new(CREDENTIAL_SERVICE, email).map_err(cred_err::open)
+    Entry::new(&crate::dev_lane::service(CREDENTIAL_SERVICE), email).map_err(cred_err::open)
 }
 
 pub(super) fn read_secret(email: &str) -> Result<Option<String>, UserError> {

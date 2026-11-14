@@ -36,6 +36,7 @@ import { useWindowDragGesture } from "./useWindowDragGesture";
 import { hasNotchDrop, useIslandNotch } from "./notch";
 import { hasNotchAlert, NotchAlertLeading, NotchAlertTrailing } from "./NotchAlert";
 import { NotchMessageLeading, NotchMessageTrailing } from "./NotchMessage";
+import { DevWatermark } from "../../components/DevWatermark";
 import "./IslandCollapsedBar.css";
 
 type IslandCollapsedBarProps = {
@@ -319,6 +320,7 @@ export function IslandCollapsedBar({
         }
       }}
     >
+      <DevWatermark place="collapsed" />
       {notch ? (
         <>
           <div className="island__notch-row">

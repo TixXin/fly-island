@@ -5,7 +5,7 @@ import { useTranslation } from "../../i18n";
 import type { SettingsFocusSection } from "../settings/storage";
 import { ActHeading } from "./ActHeading";
 import type { OnboardingModule } from "./personas";
-import { isMacOS } from "../../lib/platform";
+import { isMacOS, useDevBuild } from "../../lib/platform";
 
 export function ReleaseAct({ modules, launchAtStartup, onLaunchAtStartupChange, onLeaveForSettings }: {
   modules: ReadonlySet<OnboardingModule>;
@@ -14,12 +14,14 @@ export function ReleaseAct({ modules, launchAtStartup, onLaunchAtStartupChange, 
   onLeaveForSettings: (section?: SettingsFocusSection) => void;
 }) {
   const text = useTranslation().onboarding.release;
+  const devText = useTranslation().settings.devBuild;
+  const devBuild = useDevBuild();
 
   return (
     <>
       <ActHeading title={text.title} lead={text.lead} />
       <SettingsGroup>
-        <SettingsToggleRow title={text.launchAtStartup} description={isMacOS ? text.launchAtStartupHintMac : text.launchAtStartupHint} checked={launchAtStartup} onChange={onLaunchAtStartupChange} />
+        <SettingsToggleRow title={text.launchAtStartup} description={devBuild ? devText.launchAtStartupOff : isMacOS ? text.launchAtStartupHintMac : text.launchAtStartupHint} checked={launchAtStartup} disabled={devBuild} onChange={onLaunchAtStartupChange} />
       </SettingsGroup>
       <p className="onboarding-release__later">{text.later}</p>
       <div className="onboarding-release__links">

@@ -6,7 +6,7 @@ import { SettingsSwitch } from "../../components/settings/SettingsSwitch";
 import { THEME_MODES } from "../../features/appearance/themeMode";
 import type { IslandSettings, ThemeMode } from "../../features/appearance/types";
 import { LOCALE_CODES, TRANSLATIONS, isLocaleCode, useTranslation, type LocaleCode } from "../../i18n";
-import { isMacOS, type PlatformFeature } from "../../lib/platform";
+import { isMacOS, useDevBuild, type PlatformFeature } from "../../lib/platform";
 import { openOnboardingWindow } from "../onboarding/api";
 import { FEATURE_PAGES, isCategoryAvailable, SETTINGS_FEATURES, type SettingsCategory, type SettingsFeature } from "./categories";
 import { OverviewStage, type StageFeature } from "./OverviewStage";
@@ -39,6 +39,7 @@ export function OverviewSettingsPage({
   const [launchAtStartup, updateLaunchAtStartup] = useLaunchAtStartup();
   const [spot, setSpot] = useState<StageFeature | null>(null);
   const launchId = useId();
+  const devBuild = useDevBuild();
   const offered = SETTINGS_FEATURES.filter((feature) => isCategoryAvailable(FEATURE_PAGES[feature][0], unsupported));
 
   const playing: StageFeature[] = [...offered.filter((feature) => features[feature].on), "messages"];
@@ -86,7 +87,7 @@ export function OverviewSettingsPage({
           </div>
           <div className="settings-overview__tile">
             <label className="settings-overview__tile-label" htmlFor={launchId}><Power size={15} strokeWidth={1.9} aria-hidden="true" />{isMacOS ? t.settings.layout.launchAtStartupMac : t.settings.layout.launchAtStartup}</label>
-            <SettingsSwitch id={launchId} checked={launchAtStartup} onChange={updateLaunchAtStartup} />
+            <SettingsSwitch id={launchId} checked={launchAtStartup} disabled={devBuild} onChange={updateLaunchAtStartup} />
           </div>
         </div>
       </section>

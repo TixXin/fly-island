@@ -207,7 +207,7 @@ fn the_list_keeps_each_message_and_one_row_per_plain_reminder() {
     assert!(state.snapshot.items.is_empty());
 }
 
-fn chat(key: &str, preview: &str, unread: u32, open: bool) -> chats::Session {
+fn chat(key: &str, preview: &str, unread: u32) -> chats::Session {
     chats::Session {
         key: key.into(),
         contact: key.into(),
@@ -215,30 +215,24 @@ fn chat(key: &str, preview: &str, unread: u32, open: bool) -> chats::Session {
         unread: Some(unread),
         muted: false,
         mentioned: false,
-        pinned: false,
-        open,
     }
 }
 
 #[test]
 fn the_users_own_message_is_not_news() {
-    let before = [chat("x", "早", 0, false), chat("a", "对方: 在吗", 0, false)];
-    let now = [chat("a", "我: 在", 0, false), chat("x", "早", 0, false)];
-    assert!(chats::new_messages(&before, &now, true).is_empty());
-    assert!(!chats::muted_changed(&before, &now, true));
-    let now = [chat("a", "对方: 好", 1, false), chat("x", "早", 0, false)];
-    assert_eq!(chats::new_messages(&before, &now, true).len(), 1);
-    let before = [chat("a", "对方: 在吗", 0, true)];
-    let now = [chat("a", "对方: 人呢", 0, true)];
-    assert_eq!(chats::new_messages(&before, &now, true).len(), 1);
-    assert!(chats::new_messages(&before, &now, false).is_empty());
+    let before = [chat("x", "早", 0), chat("a", "对方: 在吗", 0)];
+    let now = [chat("a", "我: 在", 0), chat("x", "早", 0)];
+    assert!(chats::new_messages(&before, &now).is_empty());
+    assert!(!chats::muted_changed(&before, &now));
+    let now = [chat("a", "对方: 好", 1), chat("x", "早", 0)];
+    assert_eq!(chats::new_messages(&before, &now).len(), 1);
 }
 
 #[test]
 fn a_reply_written_while_a_flash_was_being_read_is_not_news() {
     use std::{cell::RefCell, collections::VecDeque, rc::Rc, time::Duration};
     let looks = Rc::new(RefCell::new(VecDeque::from([Listing::Rows(vec![chat(
-        "a", "对方: 在吗", 0, true,
+        "a", "对方: 在吗", 0,
     )])])));
     let queue = looks.clone();
     let mut reader = ChatReader::new(
@@ -255,7 +249,7 @@ fn a_reply_written_while_a_flash_was_being_read_is_not_news() {
     reader.flashed(start);
     reader.activated(true, start);
     reader.activated(false, start);
-    let replied = || Listing::Rows(vec![chat("a", "我: 在", 0, true)]);
+    let replied = || Listing::Rows(vec![chat("a", "我: 在", 0)]);
     looks.borrow_mut().extend([replied(), replied(), replied()]);
     assert_eq!(
         outcome(&mut reader, start),
@@ -263,7 +257,7 @@ fn a_reply_written_while_a_flash_was_being_read_is_not_news() {
     );
     looks
         .borrow_mut()
-        .push_back(Listing::Rows(vec![chat("a", "对方: 好", 0, true)]));
+        .push_back(Listing::Rows(vec![chat("a", "对方: 好", 1)]));
     assert!(matches!(
         outcome(&mut reader, start + Duration::from_secs(10)),
         Flash::Messages(_)
