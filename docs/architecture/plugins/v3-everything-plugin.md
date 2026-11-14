@@ -125,19 +125,24 @@ Tauri 的 `emit` 把负载拼进一段脚本交给 WebView 执行，每个内容
 
 ## 插件包
 
-全新格式，不认第 2 版的 `fuyu-plugin.json`。清单就是 `package.json`，浮屿的字段放在 `fuyu` 下：
+全新格式，不认第 2 版的 `fuyu-plugin.json`。清单就是 `package.json`，浮屿的字段放在 `fuyu` 下。下面是**全部字段**（2026-11-14 对照 VS Code、Obsidian、Raycast、DeepSeek Harness 和第 2 版清单逐项核对过）：
 
 ```json
 {
   "name": "@someone/fuyu-weather",
   "version": "1.2.0",
+  "type": "module",
   "description": "Weather on the island",
-  "author": "someone",
+  "author": { "name": "someone", "url": "https://example.com" },
   "license": "MIT",
   "homepage": "https://example.com/weather",
   "repository": "github:someone/fuyu-weather",
+  "bugs": "https://github.com/someone/fuyu-weather/issues",
+  "funding": "https://github.com/sponsors/someone",
   "keywords": ["weather", "forecast"],
+  "files": ["dist", "assets"],
   "fuyu": {
+    "manifest": 1,
     "displayName": { "zh-CN": "天气", "en": "Weather" },
     "description": { "zh-CN": "岛上看天气和降雨提醒", "en": "Weather and rain alerts on the island" },
     "icon": "assets/icon.png",
@@ -149,29 +154,70 @@ Tauri 的 `emit` 把负载拼进一段脚本交给 WebView 执行，每个内容
     "platforms": ["windows", "macos"],
     "host": "dist/host.js",
     "client": { "island": "dist/island.js", "settings": "dist/settings.js" },
-    "inject": ["notify", "http"],
+    "inject": { "required": ["notify", "http"], "optional": ["calendar"] },
+    "requires": { "@fuyu/location": "^1.0.0" },
     "provides": ["weather"],
     "replaces": [],
     "slots": ["island.page", "island.bar", "settings.section"],
-    "config": "dist/config.schema.json"
+    "commands": [
+      { "id": "weather.refresh", "title": { "zh-CN": "刷新天气", "en": "Refresh weather" }, "keybinding": "Ctrl+Alt+W" }
+    ],
+    "config": "dist/config.schema.json",
+    "experimental": [],
+    "builtWith": "2.0.0"
   }
 }
 ```
 
-| 字段 | 用途 |
-|---|---|
-| `name`、`version`、`author`、`license`、`homepage`、`repository`、`keywords` | npm 的标准字段，市场直接显示和搜索 |
-| `displayName`、`description` | 中英文的名字和一句话介绍 |
-| `icon`、`screenshots` | 市场卡片的图标、详情页的截图（带中英文说明） |
-| `categories` | 市场分类 |
-| `minAppVersion`、`platforms` | 兼容性：不满足的在市场里标出、不能安装 |
-| `host`、`client` | 宿主部分和各窗口的界面部分，分开打包，窗口只加载自己用得到的 |
-| `inject` | 依赖哪些服务；缺了就不启动，市场提示「需要先装某某插件」 |
-| `provides`、`replaces` | 提供哪些服务、替换哪些内置服务。**市场和安装确认会写明「这个插件会替换内置的翻译」**，审核时也对照代码核实 |
-| `slots` | 往哪些插槽放界面，市场显示成「加一个岛上页面」「加一个设置分节」 |
-| `config` | 设置项的 schema：设置窗口自动生成表单，市场详情列出有哪些可调项 |
+**npm 的标准字段**
 
-`provides`、`replaces`、`slots` 是声明，内核不靠它们限制插件（完整插件本来什么都能做），但加载时会核对：实际注册了没声明的服务或插槽，就在插件页标「和声明不符」，市场审核不通过。
+| 字段 | 必填 | 用途 |
+|---|---|---|
+| `name` | 是 | 插件的唯一标识，也是安装目录和数据目录的名字。`@fuyu/*` 留给官方；第三方用自己的 scope 或 `fuyu-plugin-*` |
+| `version` | 是 | semver。带预发布标记（`1.3.0-beta.1`）的算预发布版，用户选了「接收预发布」才会收到 |
+| `type` | 是 | 固定 `"module"`：入口都是 ES 模块，默认导出插件 |
+| `description`、`author`、`license`、`homepage`、`repository`、`bugs`、`funding`、`keywords` | `license`、`repository` 必填，其余可选 | 市场的详情页：作者、许可证、主页、源码仓库、报告问题、赞助作者；`keywords` 用于搜索 |
+| `files` | 否 | 哪些文件进包（代替第 2 版的 `.fuyuignore`）；`package.json`、README、CHANGELOG、LICENSE 总会带上 |
+
+**`fuyu` 下的字段**
+
+| 字段 | 必填 | 用途 |
+|---|---|---|
+| `manifest` | 是 | 清单格式的版本，现在是 `1`。以后格式有不兼容的变化才加 1 |
+| `displayName`、`description` | 是 | 名字和一句话介绍，按语言写；现在要 `zh-CN` 和 `en`，以后加语言不用改格式 |
+| `icon` | 是 | 图标，PNG 或 SVG，方形，至少 256 像素；要在深色和浅色的岛上都看得清 |
+| `categories` | 是 | 市场分类，从固定的列表里选 |
+| `screenshots` | 否 | 详情页的截图，最多 6 张，带按语言写的说明 |
+| `minAppVersion` | 是 | 最低的浮屿版本；不满足的在市场里标出、不能安装 |
+| `platforms` | 否 | 能用的系统，不写就是都能用 |
+| `host` | 否 | 宿主部分的入口。只加界面的插件可以没有 |
+| `client` | 否 | 各窗口的界面入口，键是窗口名（`island`、`settings`、`clipboard`、`translation`……）；窗口只加载自己的那份。样式由打包器打进 JS |
+| `inject` | 否 | 用到哪些服务：`required` 缺了就不启动，`optional` 有就用。**市场据此显示这个插件会用到什么**，例如 `http`（联网）、`fs`（读写文件）、`subprocess`（运行程序）、`clipboard`（读剪贴板） |
+| `requires` | 否 | 依赖的其他插件和版本范围；安装时市场一起装上，缺了提示 |
+| `provides`、`replaces` | 否 | 提供哪些服务、替换哪些内置服务。市场和安装确认会写明「这个插件会替换内置的翻译」 |
+| `slots` | 否 | 往哪些插槽放界面，市场显示成「加一个岛上页面」「加一个设置分节」 |
+| `commands` | 否 | 命令和默认快捷键。写在清单里，是为了不运行插件也能在「快捷键」设置里列出来、检查冲突 |
+| `config` | 否 | 设置项的 schema（含默认值）：设置窗口自动生成表单，市场详情列出可调项 |
+| `experimental` | 否 | 用到的实验接口（E30）。写了的插件只能在开发模式加载，市场拒收 |
+| `builtWith` | 自动 | `fuyu-plugin pack` 写入的 SDK 版本，排查问题和提示「该用新版 SDK 重新打包」用 |
+
+**有意不放进清单的**
+
+| 东西 | 在哪 |
+|---|---|
+| 发布者、签名公钥、已验证的域名 | 市场的提交文件（`fuyu-plugins` 的 `plugins/<名字>.json`）：这些要由市场核实，不能由包自己说了算 |
+| 是否作者签名、是否与源码一致、点赞、下载地址和哈希 | 市场索引，由 CI 生成 |
+| 权限 | 没有：完整插件和浮屿同权（决定 2）。`inject` 只用于说明，不是限制 |
+| 什么时候启动 | 没有：宿主部分在依赖就绪后启动，界面部分在窗口打开时加载；要更晚加载的，插件自己在代码里按需 `import()` |
+| 音效、主题这类不带代码的内容 | 主题继续走单独的主题市场；音效包是只有 `host`、调用 `ctx.sounds` 注册的插件 |
+| 按系统带不同的可执行程序 | 暂不支持：要运行外部程序的插件用 `ctx.subprocess` 调系统里已有的程序。以后要支持时加一个可选字段，不影响已有插件 |
+
+**怎么保证以后不用推倒重来**
+
+- `provides`、`replaces`、`slots`、`commands`、`inject` 是声明，内核不靠它们限制插件，但加载时会核对：实际做了没声明的事，就在插件页标「和声明不符」，市场审核不通过。
+- 浮屿和市场**忽略不认识的字段**，`fuyu-plugin validate` 对它们给告警（E24 的做法）。所以以后加字段只会是「新增可选字段」，旧插件不用改，旧版浮屿也照常加载新插件。
+- 只有不兼容的变化才升 `manifest`，那时浮屿同时认新旧两版。
+- 这张表在第 5 阶段转正前还可能按实现时的发现微调（那之前都算实验接口）；转正后只增不改。
 
 ### Release 是什么文件
 
@@ -205,7 +251,7 @@ LICENSE
 
 | 来源 | 信息 |
 |---|---|
-| 清单 | 名字、介绍、图标、截图、分类、关键词、作者、许可证、主页、仓库、兼容的版本和系统、依赖、提供和替换的服务、用到的插槽、设置项 |
+| 清单 | 名字、介绍、图标、截图、分类、关键词、作者、许可证、主页、仓库、报告问题和赞助的链接、兼容的版本和系统、会用到什么（联网、文件、运行程序……）、依赖的插件、提供和替换的服务、用到的插槽、命令和快捷键、设置项 |
 | 包里的文件 | README、CHANGELOG（各 16 KB 以内，和第 2 版一样随索引带上） |
 | 市场加上的 | 发布者和是否已验证、是否作者签名、是否与源码一致、包大小、发布时间、历史版本、点赞数、是否被撤销 |
 
